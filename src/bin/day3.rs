@@ -19,17 +19,16 @@ fn main() -> Result<(), String> {
     Ok(())
 }
 
-fn part1(map: Map) -> u32 {
-    let (end_row, end_column) = map.goal_position;
-    let rows = 0..end_row;
-    let columns = (0..end_row).map(|c| c * 3 % end_column).take(end_row);
-    rows.zip(columns).fold(0, |acc, (x, y)| {
-        acc + if map.has_tree(x, y).unwrap() { 1 } else { 0 }
-    })
+fn part1(map: Map) -> u64 {
+    map.trees_in_path(3, 1)
 }
 
-fn part2(_map: Map) -> u32 {
-    unimplemented!()
+fn part2(map: Map) -> u64 {
+    let paths: Vec<(usize, usize)> = vec![(1, 1), (3, 1), (5, 1), (7, 1), (1, 2)];
+    paths
+        .iter()
+        .map(|(right, down)| map.trees_in_path(*right, *down))
+        .product()
 }
 
 #[derive(Debug)]
@@ -61,5 +60,18 @@ impl Map {
         } else {
             Ok(self.rows[x][y] == '#')
         }
+    }
+
+    fn trees_in_path(&self, right_increment: usize, down_increment: usize) -> u64 {
+        let (end_row, end_column) = self.goal_position;
+        let rows = (0..end_row)
+            .map(|r| r * down_increment)
+            .take_while(|r| *r < end_row);
+        let columns = (0..end_row)
+            .map(|c| c * right_increment % end_column)
+            .take(end_row);
+        rows.zip(columns).fold(0, |acc, (x, y)| {
+            acc + if self.has_tree(x, y).unwrap() { 1 } else { 0 }
+        })
     }
 }
