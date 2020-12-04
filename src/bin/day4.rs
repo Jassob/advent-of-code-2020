@@ -45,20 +45,69 @@ fn split_on_eop(s: String) -> Vec<String> {
 }
 
 fn part1(passports: Vec<Passport>) -> u64 {
-    fn fixer(p: &Passport) -> Passport {
-        let mut p = p.clone();
-        p.cid = Some("".to_string()); // ensure p has a cid
-        p
+    fn validater(p: &Passport) -> bool {
+        p.byr.is_some()
+            && p.iyr.is_some()
+            && p.eyr.is_some()
+            && p.hgt.is_some()
+            && p.hcl.is_some()
+            && p.ecl.is_some()
+            && p.pid.is_some()
     }
+
     passports
         .iter()
-        .map(|p| p.is_valid(&fixer))
+        .map(|p| p.is_valid(&validater))
         .filter(|b| *b)
         .count() as u64
 }
 
-fn part2(_passports: Vec<Passport>) -> u64 {
-    unimplemented!()
+fn part2(passports: Vec<Passport>) -> u64 {
+    fn valid_eye_color(s: &String) -> bool {
+        ["amb", "blu", "brn", "gry", "grn", "hzl", "oth"].contains(&s.as_str())
+    }
+    fn within_bounds(s: Option<&String>, min: u64, max: u64) -> bool {
+        s.and_then(|s| s.parse::<u64>().ok())
+            .map(|y| (min..max + 1).contains(&y))
+            .unwrap_or(false)
+    }
+    fn check_height(s: &String) -> bool {
+        let (number, unit): (String, String) = s.chars().partition(|c| char::is_digit(*c, 10));
+        let length: u64 = number.parse().expect("a sequence of digits");
+        if unit.as_str() == "in" {
+            (59..76 + 1).contains(&length)
+        } else if unit.as_str() == "cm" {
+            (150..193 + 1).contains(&length)
+        } else {
+            false
+        }
+    }
+    fn check_hex_color(s: &String) -> bool {
+        let (first, rest) = s.split_at(1);
+        first == "#" && rest.len() == 6 && rest.chars().all(|s| char::is_ascii_hexdigit(&s))
+    }
+    fn validater(p: &Passport) -> bool {
+        let valid_hgt = p.hgt.as_ref().map(&check_height).unwrap_or(false);
+        let valid_hcl = p.hcl.as_ref().map(&check_hex_color).unwrap_or(false);
+        let valid_ecl = p.ecl.as_ref().map(&valid_eye_color).unwrap_or(false);
+        let valid_pid = p
+            .pid
+            .as_ref()
+            .map(|s| s.len() == 9 && s.parse::<u64>().is_ok())
+            .unwrap_or(false);
+        within_bounds(p.byr.as_ref(), 1920, 2002)
+            && within_bounds(p.iyr.as_ref(), 2010, 2020)
+            && within_bounds(p.eyr.as_ref(), 2020, 2030)
+            && valid_hgt
+            && valid_hcl
+            && valid_ecl
+            && valid_pid
+    }
+    passports
+        .iter()
+        .map(|p| p.is_valid(&validater))
+        .filter(|b| *b)
+        .count() as u64
 }
 
 #[derive(Debug, Clone)]
@@ -111,15 +160,7 @@ impl Passport {
         p
     }
 
-    fn is_valid(&self, fixer: &dyn Fn(&Passport) -> Passport) -> bool {
-        let p = fixer(self);
-        p.byr.is_some()
-            && p.iyr.is_some()
-            && p.eyr.is_some()
-            && p.hgt.is_some()
-            && p.hcl.is_some()
-            && p.ecl.is_some()
-            && p.pid.is_some()
-            && p.cid.is_some()
+    fn is_valid(&self, validater: &dyn Fn(&Passport) -> bool) -> bool {
+        validater(self)
     }
 }
