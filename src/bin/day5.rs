@@ -11,31 +11,38 @@ fn main() -> Result<(), String> {
     let passports = fs::read_to_string(input_file)
         .or_else(|err| Err(format!("failed to read input: {}", err)))?
         .lines()
-        .map(|l| BoardingPass::parse(l).expect("no invalid boarding passes"))
+        .map(|l| BoardingPass::parse(l))
         .collect();
 
     println!(
         "Result: {}",
         if part == "1" {
-            part1(passports)
+            part1(passports).ok_or_else(|| "missing")?
         } else {
-            part2(passports)
+            part2(passports).ok_or_else(|| "missing")?
         }
     );
 
     Ok(())
 }
 
-fn part1(boardingpasses: Vec<BoardingPass>) -> u64 {
-    boardingpasses
-        .iter()
-        .map(|b| b.seat().id())
-        .max()
-        .unwrap_or(0)
+fn part1(boardingpasses: Vec<BoardingPass>) -> Option<u64> {
+    boardingpasses.iter().map(|b| b.seat().id()).max()
 }
 
-fn part2(_boardingpasses: Vec<BoardingPass>) -> u64 {
-    unimplemented!()
+fn part2(boardingpasses: Vec<BoardingPass>) -> Option<u64> {
+    let mut seats = boardingpasses
+        .iter()
+        .map(|bp| bp.seat().id())
+        .collect::<Vec<u64>>();
+    seats.sort();
+    // pair up all seat ids with its successor id and see where the gap is
+    seats
+        .iter()
+        .zip(seats.iter().skip(1))
+        .find(|(id1, id2)| *id2 - *id1 > 1)
+        // return missing id
+        .and_then(|(id1, id2)| (*id1..*id2).nth(1))
 }
 
 #[derive(Debug, Clone)]
@@ -45,21 +52,19 @@ struct BoardingPass {
 }
 
 impl BoardingPass {
-    fn parse(input: &str) -> Option<BoardingPass> {
-        if input.len() != 10 {
-            None
-        } else {
-            let (rows, columns) = input.split_at(7);
-            Some(BoardingPass {
-                row: rows
-                    .chars()
-                    .map(|c| Direction::from_char(c, 'F', 'B').expect("should not fail"))
-                    .collect(),
-                column: columns
-                    .chars()
-                    .map(|c| Direction::from_char(c, 'L', 'R').expect("should not fail"))
-                    .collect(),
-            })
+    fn parse(input: &str) -> BoardingPass {
+        let (rows, columns) = input.split_at(7);
+        let row_dirs = rows
+            .chars()
+            .map(|c| Direction::from_char(c, 'F', 'B').expect("no fail"))
+            .collect();
+        let col_dirs = columns
+            .chars()
+            .map(|c| Direction::from_char(c, 'L', 'R').expect("no fail"))
+            .collect();
+        BoardingPass {
+            row: row_dirs,
+            column: col_dirs,
         }
     }
 
@@ -168,7 +173,7 @@ mod tests {
             },
         ] {
             let bp = BoardingPass::parse(t.line);
-            let seat = bp.expect("no fail").seat();
+            let seat = bp.seat();
             assert_eq!(seat, t.expected_seat);
             assert_eq!(seat.id(), t.expected_seat_id);
         }
