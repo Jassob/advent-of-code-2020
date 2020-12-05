@@ -7,33 +7,28 @@ fn main() -> Result<(), String> {
     }
     let part = &args[2];
     let input_file = &args[3];
-    let passports = fs::read_to_string(input_file)
+    let mut seats = fs::read_to_string(input_file)
         .or_else(|err| Err(format!("failed to read input: {}", err)))?
         .lines()
-        .map(|l| BoardingPass::parse(l))
+        .map(parse_seats_id)
         .collect();
-
     println!(
         "Result: {}",
         if part == "1" {
-            part1(passports).ok_or_else(|| "missing")?
+            part1(&seats).ok_or_else(|| "missing")?
         } else {
-            part2(passports).ok_or_else(|| "missing")?
+            part2(&mut seats).ok_or_else(|| "missing")?
         }
     );
 
     Ok(())
 }
 
-fn part1(boardingpasses: Vec<BoardingPass>) -> Option<u64> {
-    boardingpasses.iter().map(|b| b.seat_id()).max()
+fn part1(seats: &Vec<u64>) -> Option<u64> {
+    seats.iter().max().map(|v| *v)
 }
 
-fn part2(boardingpasses: Vec<BoardingPass>) -> Option<u64> {
-    let mut seats = boardingpasses
-        .iter()
-        .map(|bp| bp.seat_id())
-        .collect::<Vec<u64>>();
+fn part2(seats: &mut Vec<u64>) -> Option<u64> {
     seats.sort();
     // pair up all seat ids with its successor id and see where the gap is
     seats
@@ -44,30 +39,11 @@ fn part2(boardingpasses: Vec<BoardingPass>) -> Option<u64> {
         .and_then(|(id1, id2)| (*id1..*id2).nth(1))
 }
 
-#[derive(Debug, Clone, PartialEq)]
-struct BoardingPass {
-    row: u8,
-    column: u8,
-}
-
-impl BoardingPass {
-    fn parse(input: &str) -> BoardingPass {
-        let (rows, columns) = input.split_at(7);
-        BoardingPass {
-            row: rows
-                .chars()
-                .map(|c| if c == 'B' { 1 } else { 0 })
-                .fold(0, |acc, b| (acc << 1) + b),
-            column: columns
-                .chars()
-                .map(|c| if c == 'R' { 1 } else { 0 })
-                .fold(0, |acc, b| (acc << 1) + b),
-        }
-    }
-
-    fn seat_id(&self) -> u64 {
-        self.row as u64 * 8 + self.column as u64
-    }
+fn parse_seats_id(input: &str) -> u64 {
+    input
+        .chars()
+        .map(|c| if c == 'B' || c == 'R' { 1 } else { 0 })
+        .fold(0, |acc, b| (acc << 1) + b)
 }
 
 #[cfg(test)]
@@ -78,33 +54,24 @@ mod tests {
     fn part_1_tests() {
         struct Test {
             line: &'static str,
-            expected_boardingpass: BoardingPass,
             expected_seat_id: u64,
         }
 
         for t in vec![
             Test {
                 line: "BFFFBBFRRR",
-                expected_boardingpass: BoardingPass { row: 70, column: 7 },
                 expected_seat_id: 567,
             },
             Test {
                 line: "FFFBBBFRRR",
-                expected_boardingpass: BoardingPass { row: 14, column: 7 },
                 expected_seat_id: 119,
             },
             Test {
                 line: "BBFFBBFRLL",
-                expected_boardingpass: BoardingPass {
-                    row: 102,
-                    column: 4,
-                },
                 expected_seat_id: 820,
             },
         ] {
-            let bp = BoardingPass::parse(t.line);
-            assert_eq!(bp, t.expected_boardingpass);
-            let seat_id = bp.seat_id();
+            let seat_id = parse_seats_id(t.line);
             assert_eq!(seat_id, t.expected_seat_id);
         }
     }
