@@ -1,4 +1,3 @@
-use std::char;
 use std::fs;
 
 fn main() -> Result<(), String> {
@@ -27,13 +26,13 @@ fn main() -> Result<(), String> {
 }
 
 fn part1(boardingpasses: Vec<BoardingPass>) -> Option<u64> {
-    boardingpasses.iter().map(|b| b.seat().id()).max()
+    boardingpasses.iter().map(|b| b.seat_id()).max()
 }
 
 fn part2(boardingpasses: Vec<BoardingPass>) -> Option<u64> {
     let mut seats = boardingpasses
         .iter()
-        .map(|bp| bp.seat().id())
+        .map(|bp| bp.seat_id())
         .collect::<Vec<u64>>();
     seats.sort();
     // pair up all seat ids with its successor id and see where the gap is
@@ -45,84 +44,31 @@ fn part2(boardingpasses: Vec<BoardingPass>) -> Option<u64> {
         .and_then(|(id1, id2)| (*id1..*id2).nth(1))
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 struct BoardingPass {
-    row: Vec<Direction>,
-    column: Vec<Direction>,
+    row: u8,
+    column: u8,
 }
 
 impl BoardingPass {
     fn parse(input: &str) -> BoardingPass {
+        fn parse_as_u8(s: &str, from_char: &dyn Fn(char) -> u8) -> u8 {
+            s.chars()
+                .map(from_char)
+                .rev()
+                .enumerate()
+                .map(|(i, d)| d * 2u8.pow(i as u32))
+                .sum()
+        }
         let (rows, columns) = input.split_at(7);
-        let row_dirs = rows
-            .chars()
-            .map(|c| Direction::from_char(c, 'F', 'B').expect("no fail"))
-            .collect();
-        let col_dirs = columns
-            .chars()
-            .map(|c| Direction::from_char(c, 'L', 'R').expect("no fail"))
-            .collect();
         BoardingPass {
-            row: row_dirs,
-            column: col_dirs,
+            row: parse_as_u8(rows, &|c| if c == 'B' { 1 } else { 0 }),
+            column: parse_as_u8(columns, &|c| if c == 'R' { 1 } else { 0 }),
         }
     }
 
-    fn seat(&self) -> Seat {
-        Seat {
-            row: bsp(&self.row, Seat::MAX_ROW as u64).unwrap_or(0),
-            column: bsp(&self.column, Seat::MAX_COLUMN as u64).unwrap_or(0),
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq)]
-enum Direction {
-    Higher,
-    Lower,
-}
-
-impl Direction {
-    fn from_char(c: char, low: char, high: char) -> Option<Direction> {
-        if c == high {
-            Some(Direction::Higher)
-        } else if c == low {
-            Some(Direction::Lower)
-        } else {
-            None
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq)]
-struct Seat {
-    row: u64,
-    column: u64,
-}
-
-impl Seat {
-    const MAX_ROW: u8 = 127;
-    const MAX_COLUMN: u8 = 7;
-
-    fn id(&self) -> u64 {
-        self.row * 8 + self.column
-    }
-}
-
-fn bsp(dirs: &Vec<Direction>, max: u64) -> Option<u64> {
-    let mut slots: Vec<u64> = (0..max + 1).collect();
-    for d in dirs.iter() {
-        let length = slots.len();
-        if *d == Direction::Higher {
-            slots = slots.iter().skip(length / 2).map(|s| *s).collect();
-        } else {
-            slots = slots.iter().take(length / 2).map(|s| *s).collect();
-        }
-    }
-    if slots.len() != 1 {
-        None
-    } else {
-        Some(slots[0])
+    fn seat_id(&self) -> u64 {
+        self.row as u64 * 8 + self.column as u64
     }
 }
 
@@ -131,41 +77,27 @@ mod tests {
     use super::*;
 
     #[test]
-    fn bsp_1() {
-        let row_dirs: Vec<Direction> = "FBFBBFF"
-            .chars()
-            .map(|c| Direction::from_char(c, 'F', 'B').expect("no fail"))
-            .collect();
-        let column_dirs: Vec<Direction> = "RLR"
-            .chars()
-            .map(|c| Direction::from_char(c, 'L', 'R').expect("no fail"))
-            .collect();
-        assert_eq!(bsp(&row_dirs, Seat::MAX_ROW as u64), Some(44));
-        assert_eq!(bsp(&column_dirs, Seat::MAX_COLUMN as u64), Some(5));
-    }
-
-    #[test]
     fn part_1_tests() {
         struct Test {
             line: &'static str,
-            expected_seat: Seat,
+            expected_boardingpass: BoardingPass,
             expected_seat_id: u64,
         }
 
         for t in vec![
             Test {
                 line: "BFFFBBFRRR",
-                expected_seat: Seat { row: 70, column: 7 },
+                expected_boardingpass: BoardingPass { row: 70, column: 7 },
                 expected_seat_id: 567,
             },
             Test {
                 line: "FFFBBBFRRR",
-                expected_seat: Seat { row: 14, column: 7 },
+                expected_boardingpass: BoardingPass { row: 14, column: 7 },
                 expected_seat_id: 119,
             },
             Test {
                 line: "BBFFBBFRLL",
-                expected_seat: Seat {
+                expected_boardingpass: BoardingPass {
                     row: 102,
                     column: 4,
                 },
@@ -173,9 +105,9 @@ mod tests {
             },
         ] {
             let bp = BoardingPass::parse(t.line);
-            let seat = bp.seat();
-            assert_eq!(seat, t.expected_seat);
-            assert_eq!(seat.id(), t.expected_seat_id);
+            assert_eq!(bp, t.expected_boardingpass);
+            let seat_id = bp.seat_id();
+            assert_eq!(seat_id, t.expected_seat_id);
         }
     }
 }
