@@ -1,4 +1,5 @@
 use std::char;
+use std::collections::HashMap;
 use std::fs;
 
 fn main() -> Result<(), String> {
@@ -123,41 +124,31 @@ struct Passport {
 }
 
 impl Passport {
-    fn new() -> Passport {
+    fn from_hashmap(dict: HashMap<String, String>) -> Passport {
         Passport {
-            byr: None,
-            iyr: None,
-            eyr: None,
-            hgt: None,
-            hcl: None,
-            ecl: None,
-            pid: None,
-            cid: None,
+            byr: dict.get("byr").map(|s| s.to_string()),
+            iyr: dict.get("iyr").map(|s| s.to_string()),
+            eyr: dict.get("eyr").map(|s| s.to_string()),
+            hgt: dict.get("hgt").map(|s| s.to_string()),
+            hcl: dict.get("hcl").map(|s| s.to_string()),
+            ecl: dict.get("ecl").map(|s| s.to_string()),
+            pid: dict.get("pid").map(|s| s.to_string()),
+            cid: dict.get("cid").map(|s| s.to_string()),
         }
     }
+
     fn parse(input: &str) -> Passport {
-        let mut p = Passport::new();
-        let kvs: Vec<Vec<&str>> = input
+        let kvs: HashMap<String, String> = input
             .split(char::is_whitespace)
-            .map(|s| s.split(':').collect())
+            .filter(|s| *s != "")
+            .map(|s| {
+                (
+                    s.chars().take(3).collect::<String>(),
+                    s.chars().skip(4).collect::<String>(),
+                )
+            })
             .collect();
-        for kv in kvs.iter() {
-            if kv.len() != 2 {
-                continue;
-            }
-            match kv[0] {
-                "byr" => p.byr = Some(kv[1].to_string()),
-                "iyr" => p.iyr = Some(kv[1].to_string()),
-                "eyr" => p.eyr = Some(kv[1].to_string()),
-                "hgt" => p.hgt = Some(kv[1].to_string()),
-                "hcl" => p.hcl = Some(kv[1].to_string()),
-                "ecl" => p.ecl = Some(kv[1].to_string()),
-                "pid" => p.pid = Some(kv[1].to_string()),
-                "cid" => p.cid = Some(kv[1].to_string()),
-                _ => println!("ignored {:?}", kv),
-            }
-        }
-        p
+        Passport::from_hashmap(kvs)
     }
 
     fn is_valid(&self, validater: &dyn Fn(&Passport) -> bool) -> bool {
