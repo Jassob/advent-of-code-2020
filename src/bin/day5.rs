@@ -52,18 +52,16 @@ struct BoardingPass {
 
 impl BoardingPass {
     fn parse(input: &str) -> BoardingPass {
-        fn parse_as_u8(s: &str, from_char: &dyn Fn(char) -> u8) -> u8 {
-            s.chars()
-                .map(from_char)
-                .rev()
-                .enumerate()
-                .map(|(i, d)| d * 2u8.pow(i as u32))
-                .sum()
-        }
         let (rows, columns) = input.split_at(7);
         BoardingPass {
-            row: parse_as_u8(rows, &|c| if c == 'B' { 1 } else { 0 }),
-            column: parse_as_u8(columns, &|c| if c == 'R' { 1 } else { 0 }),
+            row: rows
+                .chars()
+                .map(|c| if c == 'B' { 1 } else { 0 })
+                .fold(0, |acc, b| (acc << 1) + b),
+            column: columns
+                .chars()
+                .map(|c| if c == 'R' { 1 } else { 0 })
+                .fold(0, |acc, b| (acc << 1) + b),
         }
     }
 
