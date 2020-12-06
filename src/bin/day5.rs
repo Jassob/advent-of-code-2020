@@ -1,34 +1,21 @@
 use std::fs;
 
+use utils;
+
 fn main() -> Result<(), String> {
-    let args: Vec<String> = std::env::args().collect();
-    if args.len() != 4 {
-        Err("Usage: day5 --part <1|2> <input>")?
-    }
-    let part = &args[2];
-    let input_file = &args[3];
-    let mut seats = fs::read_to_string(input_file)
-        .or_else(|err| Err(format!("failed to read input: {}", err)))?
-        .lines()
-        .map(parse_seats_id)
-        .collect();
-    println!(
-        "Result: {}",
-        if part == "1" {
-            part1(&seats).ok_or_else(|| "missing")?
-        } else {
-            part2(&mut seats).ok_or_else(|| "missing")?
-        }
-    );
+    let (part, content) = utils::parse_args()?;
+    let seats = content.lines().map(parse_seats_id).collect();
+    utils::run(part1, part2, part, seats);
 
     Ok(())
 }
 
-fn part1(seats: &Vec<u64>) -> Option<u64> {
-    seats.iter().max().map(|v| *v)
+fn part1(seats: Vec<u64>) -> u64 {
+    seats.iter().max().map(|v| *v).expect("found no max")
 }
 
-fn part2(seats: &mut Vec<u64>) -> Option<u64> {
+fn part2(seats: Vec<u64>) -> u64 {
+    let mut seats = seats.clone();
     seats.sort();
     // pair up all seat ids with its successor id and see where the gap is
     seats
@@ -37,6 +24,7 @@ fn part2(seats: &mut Vec<u64>) -> Option<u64> {
         .find(|(id1, id2)| *id2 - *id1 > 1)
         // return missing id
         .and_then(|(id1, id2)| (*id1..*id2).nth(1))
+        .expect("found no hole")
 }
 
 fn parse_seats_id(input: &str) -> u64 {
