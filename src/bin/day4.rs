@@ -2,6 +2,8 @@ use std::char;
 use std::collections::HashMap;
 use std::fs;
 
+use utils::strings;
+
 fn main() -> Result<(), String> {
     let args: Vec<String> = std::env::args().collect();
     if args.len() != 4 {
@@ -11,7 +13,12 @@ fn main() -> Result<(), String> {
     let input_file = &args[3];
     let passports = fs::read_to_string(input_file)
         .or_else(|err| Err(format!("failed to read input: {}", err)))
-        .map(split_on_eop)
+        .map(|s| {
+            strings::split_on_empty_lines(s)
+                .iter()
+                .map(strings::join_lines)
+                .collect::<Vec<String>>()
+        })
         .and_then(|passports| Ok(passports.iter().map(|p| Passport::parse(p)).collect()))?;
 
     println!(
@@ -24,25 +31,6 @@ fn main() -> Result<(), String> {
     );
 
     Ok(())
-}
-
-/// split a string on end-of-password newlines
-fn split_on_eop(s: String) -> Vec<String> {
-    let mut groups = vec![];
-    let mut current_pass = String::new();
-    for l in s.lines() {
-        if l == "" {
-            groups.push(current_pass);
-            current_pass = String::new();
-        } else {
-            current_pass.push(' ');
-            current_pass.push_str(l);
-        }
-    }
-    if current_pass != "" {
-        groups.push(current_pass);
-    }
-    groups
 }
 
 fn part1(passports: Vec<Passport>) -> u64 {

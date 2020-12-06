@@ -1,4 +1,6 @@
-use std::{collections::HashMap, fs};
+use std::{collections::HashMap, fs, str::FromStr};
+
+use utils::strings;
 
 fn main() -> Result<(), String> {
     let args: Vec<String> = std::env::args().collect();
@@ -9,9 +11,9 @@ fn main() -> Result<(), String> {
     let input_file = &args[3];
     let content = fs::read_to_string(input_file)
         .or_else(|err| Err(format!("failed to read input: {}", err)))?;
-    let groups = split_groups(content.as_str())
+    let groups = strings::split_on_empty_lines(content.as_str())
         .iter()
-        .map(|strs| Group::from_strs(strs))
+        .map(|strs| strings::join_lines(strs).parse().unwrap())
         .collect();
     println!(
         "Result: {}",
@@ -23,19 +25,6 @@ fn main() -> Result<(), String> {
     );
 
     Ok(())
-}
-
-fn split_groups<'a>(input: &'a str) -> Vec<Vec<&'a str>> {
-    input.lines().fold(vec![], |mut acc, l| {
-        if l == "" {
-            acc.push(vec![]);
-        } else if acc.last_mut().is_none() {
-            acc.push(vec![l]);
-        } else {
-            acc.last_mut().map(|ls| ls.push(l));
-        }
-        acc
-    })
 }
 
 fn part1(groups: Vec<Group>) -> Option<u32> {
@@ -58,18 +47,21 @@ struct Group {
     total_members: u32,
 }
 
-impl Group {
-    fn from_strs(input: &Vec<&str>) -> Group {
-        Group {
-            answers: input.iter().fold(HashMap::new(), |mut acc, s| {
-                s.chars().for_each(|c| {
+impl FromStr for Group {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(Group {
+            answers: s.chars().filter(|c| !char::is_whitespace(*c)).fold(
+                HashMap::new(),
+                |mut acc, c| {
                     let counter = acc.entry(c).or_insert(0);
                     *counter += 1;
-                });
-                acc
-            }),
-            total_members: input.len() as u32,
-        }
+                    acc
+                },
+            ),
+            total_members: s.lines().count() as u32,
+        })
     }
 }
 
@@ -95,18 +87,19 @@ b";
 
     #[test]
     fn test_part_one() {
-        let test_groups = split_groups(TEST_STR)
+        let test_groups = strings::split_on_empty_lines(TEST_STR)
             .iter()
-            .map(|strs| Group::from_strs(strs))
+            .map(|strs| strings::join_lines(strs).parse().unwrap())
             .collect();
+        println!("{:?}", test_groups);
         assert_eq!(part1(test_groups), Some(11));
     }
 
     #[test]
     fn test_part_two() {
-        let test_groups = split_groups(TEST_STR)
+        let test_groups = strings::split_on_empty_lines(TEST_STR)
             .iter()
-            .map(|strs| Group::from_strs(strs))
+            .map(|strs| strings::join_lines(strs).parse().unwrap())
             .collect();
         assert_eq!(part2(test_groups), Some(6));
     }
