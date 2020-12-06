@@ -1,20 +1,9 @@
-use std::fs;
+use utils;
 
 fn main() -> Result<(), String> {
-    let args: Vec<String> = std::env::args().collect();
-    if args.len() != 4 {
-        Err("Usage: day3 --part <1|2> <input>")?
-    }
-    let part = &args[2];
-    let input_file = &args[3];
-    let map = fs::read_to_string(input_file)
-        .or_else(|err| Err(format!("failed to read input: {}", err)))
-        .and_then(|s| Ok(Map::parse(s)))?;
-    if part == "1" {
-        println!("Result: {}", part1(map));
-    } else {
-        println!("Result: {}", part2(map));
-    }
+    let (part, content) = utils::parse_args()?;
+    let map = Map::parse(content);
+    utils::run(part1, part2, part, map);
 
     Ok(())
 }
@@ -31,7 +20,7 @@ fn part2(map: Map) -> u64 {
         .product()
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Map {
     rows: Vec<Vec<char>>,
     goal_position: (usize, usize),
