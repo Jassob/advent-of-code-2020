@@ -1,41 +1,20 @@
-use std::convert::TryInto;
-use std::fs;
-use std::str::Chars;
+use std::str::{Chars, FromStr};
+
+use utils;
 
 fn main() -> Result<(), String> {
-    let args: Vec<String> = std::env::args().collect();
-    if args.len() != 4 {
-        Err("Usage: day2 --part <1|2> <input>")?
-    }
-    let part = &args[2];
-    let input_file = &args[3];
-    let passwords = fs::read_to_string(input_file)
-        .or_else(|err| Err(format!("failed to read input: {}", err)))
-        .and_then(parse_passwords)?;
-    if part == "1" {
-        println!("Result: {}", part1(passwords));
-    } else {
-        println!("Result: {}", part2(passwords));
-    }
+    let (part, content) = utils::parse_args()?;
+    let passwords: Vec<Password> = content
+        .lines()
+        .map(|l| l.parse())
+        .collect::<Result<Vec<Password>, String>>()?;
+    utils::run(part1, part2, part, passwords);
 
     Ok(())
 }
 
-fn parse_passwords(input: String) -> Result<Vec<Password>, String> {
-    input
-        .lines()
-        .map(|l| Password::parse(l.to_string()))
-        .collect()
-}
-
 fn part1(numbers: Vec<Password>) -> u32 {
-    numbers
-        .iter()
-        .map(|p| p.is_valid())
-        .filter(|o| *o)
-        .count()
-        .try_into()
-        .unwrap()
+    numbers.iter().map(|p| p.is_valid()).filter(|o| *o).count() as u32
 }
 
 fn part2(numbers: Vec<Password>) -> u32 {
@@ -43,12 +22,10 @@ fn part2(numbers: Vec<Password>) -> u32 {
         .iter()
         .map(|p| p.is_valid_new_policy())
         .filter(|b| *b)
-        .count()
-        .try_into()
-        .unwrap()
+        .count() as u32
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Password {
     min: u32,
     max: u32,
@@ -58,26 +35,24 @@ struct Password {
 
 impl Password {
     fn is_valid(&self) -> bool {
-        let count: u32 = self
+        let count = self
             .password
             .chars()
             .filter(|c| *c == self.character)
-            .count()
-            .try_into()
-            .unwrap();
+            .count() as u32;
         return count >= self.min && count <= self.max;
     }
 
     fn is_valid_new_policy(&self) -> bool {
-        let first_index: usize = self.min.try_into().unwrap();
-        let second_index: usize = self.max.try_into().unwrap();
-        let first = self.password.chars().nth(first_index - 1).unwrap() == self.character;
-        let second = self.password.chars().nth(second_index - 1).unwrap() == self.character;
+        let first = self.password.chars().nth(self.min as usize - 1) == Some(self.character);
+        let second = self.password.chars().nth(self.max as usize - 1) == Some(self.character);
         (!first && second) || (first && !second)
     }
+}
 
-    /// TODO: Make use of real parser
-    fn parse(line: String) -> Result<Password, String> {
+impl FromStr for Password {
+    type Err = String;
+    fn from_str(line: &str) -> Result<Self, Self::Err> {
         let mut words = line.split(' ');
         let bounds_str = words.next().ok_or_else(|| "bound group missing")?;
         let mut bounds = bounds_str.chars();
@@ -98,10 +73,10 @@ impl Password {
             .ok_or_else(|| "last group missing".to_string())?
             .to_string();
         Ok(Password {
-            max: max,
-            min: min,
-            character: character,
-            password: password,
+            min,
+            max,
+            character,
+            password,
         })
     }
 }
