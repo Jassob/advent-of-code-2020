@@ -1,44 +1,31 @@
-use std::{collections::HashMap, fs, str::FromStr};
+use std::{collections::HashMap, str::FromStr};
 
+use utils;
 use utils::strings;
 
 fn main() -> Result<(), String> {
-    let args: Vec<String> = std::env::args().collect();
-    if args.len() != 4 {
-        Err("Usage: day6 --part <1|2> <input>")?
-    }
-    let part = &args[2];
-    let input_file = &args[3];
-    let content = fs::read_to_string(input_file)
-        .or_else(|err| Err(format!("failed to read input: {}", err)))?;
+    let (part, content) = utils::parse_args()?;
     let groups = strings::split_on_empty_lines(content.as_str())
         .iter()
         .map(|strs| strings::join_lines(strs).parse().unwrap())
         .collect();
-    println!(
-        "Result: {}",
-        if part == "1" {
-            part1(groups).ok_or_else(|| "missing")?
-        } else {
-            part2(groups).ok_or_else(|| "missing")?
-        }
-    );
+    utils::run(part1, part2, part, groups);
 
     Ok(())
 }
 
-fn part1(groups: Vec<Group>) -> Option<u32> {
-    Some(groups.iter().fold(0, |acc, g| acc + g.answers.len() as u32))
+fn part1(groups: Vec<Group>) -> u32 {
+    groups.iter().fold(0, |acc, g| acc + g.answers.len() as u32)
 }
 
-fn part2(groups: Vec<Group>) -> Option<u32> {
-    Some(groups.iter().fold(0, |acc, g| {
+fn part2(groups: Vec<Group>) -> u32 {
+    groups.iter().fold(0, |acc, g| {
         acc + g
             .answers
             .values()
             .filter(|v| **v == g.total_members)
             .count() as u32
-    }))
+    })
 }
 
 #[derive(Debug, Clone)]
@@ -92,7 +79,7 @@ b";
             .map(|strs| strings::join_lines(strs).parse().unwrap())
             .collect();
         println!("{:?}", test_groups);
-        assert_eq!(part1(test_groups), Some(11));
+        assert_eq!(part1(test_groups), 11);
     }
 
     #[test]
@@ -101,6 +88,6 @@ b";
             .iter()
             .map(|strs| strings::join_lines(strs).parse().unwrap())
             .collect();
-        assert_eq!(part2(test_groups), Some(6));
+        assert_eq!(part2(test_groups), 6);
     }
 }
