@@ -39,19 +39,17 @@ fn split_groups<'a>(input: &'a str) -> Vec<Vec<&'a str>> {
 }
 
 fn part1(groups: Vec<Group>) -> Option<u32> {
-    Some(
-        groups
-            .iter()
-            .fold(0, |acc, g| acc + g.no_questions_part_one()),
-    )
+    Some(groups.iter().fold(0, |acc, g| acc + g.answers.len() as u32))
 }
 
 fn part2(groups: Vec<Group>) -> Option<u32> {
-    Some(
-        groups
-            .iter()
-            .fold(0, |acc, g| acc + g.no_questions_part_two()),
-    )
+    Some(groups.iter().fold(0, |acc, g| {
+        acc + g
+            .answers
+            .values()
+            .filter(|v| **v == g.total_members)
+            .count() as u32
+    }))
 }
 
 #[derive(Debug, Clone)]
@@ -72,17 +70,6 @@ impl Group {
             }),
             total_members: input.len() as u32,
         }
-    }
-
-    fn no_questions_part_one(&self) -> u32 {
-        self.answers.len() as u32
-    }
-
-    fn no_questions_part_two(&self) -> u32 {
-        self.answers
-            .values()
-            .filter(|v| **v == self.total_members)
-            .count() as u32
     }
 }
 
