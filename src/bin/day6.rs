@@ -1,4 +1,4 @@
-use std::{collections::HashSet, fs};
+use std::{collections::HashMap, fs};
 
 fn main() -> Result<(), String> {
     let args: Vec<String> = std::env::args().collect();
@@ -33,7 +33,10 @@ fn split_groups(input: &str) -> Vec<String> {
             if acc.last_mut().is_none() {
                 acc.push(l.to_string());
             } else {
-                acc.last_mut().map(|s| s.push_str(l));
+                acc.last_mut().map(|s| {
+                    s.push_str("\n");
+                    s.push_str(l)
+                });
             }
         }
         acc
@@ -41,30 +44,51 @@ fn split_groups(input: &str) -> Vec<String> {
 }
 
 fn part1(groups: Vec<Group>) -> Option<u32> {
-    Some(groups.iter().fold(0, |acc, g| acc + g.no_questions()))
+    Some(
+        groups
+            .iter()
+            .fold(0, |acc, g| acc + g.no_questions_part_one()),
+    )
 }
 
-fn part2(_groups: Vec<Group>) -> Option<u32> {
-    unimplemented!()
+fn part2(groups: Vec<Group>) -> Option<u32> {
+    Some(
+        groups
+            .iter()
+            .fold(0, |acc, g| acc + g.no_questions_part_two()),
+    )
 }
 
 #[derive(Debug, Clone)]
 struct Group {
-    answers: HashSet<char>,
+    answers: HashMap<char, u32>,
+    total_members: u32,
 }
 
 impl Group {
     fn parse(input: &str) -> Group {
         Group {
-            answers: input.chars().fold(HashSet::new(), |mut acc, c| {
-                acc.insert(c);
-                acc
-            }),
+            answers: input.chars().filter(|c| !char::is_whitespace(*c)).fold(
+                HashMap::new(),
+                |mut acc, c| {
+                    let counter = acc.entry(c).or_insert(0);
+                    *counter += 1;
+                    acc
+                },
+            ),
+            total_members: input.lines().filter(|s| *s != "").count() as u32,
         }
     }
 
-    fn no_questions(&self) -> u32 {
+    fn no_questions_part_one(&self) -> u32 {
         self.answers.len() as u32
+    }
+
+    fn no_questions_part_two(&self) -> u32 {
+        self.answers
+            .values()
+            .filter(|v| **v == self.total_members)
+            .count() as u32
     }
 }
 
@@ -95,5 +119,14 @@ b";
             .map(|s| Group::parse(s.as_str()))
             .collect();
         assert_eq!(part1(test_groups), Some(11));
+    }
+
+    #[test]
+    fn test_part_two() {
+        let test_groups = split_groups(TEST_STR)
+            .iter()
+            .map(|s| Group::parse(s.as_str()))
+            .collect();
+        assert_eq!(part2(test_groups), Some(6));
     }
 }
