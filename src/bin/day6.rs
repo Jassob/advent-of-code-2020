@@ -11,7 +11,7 @@ fn main() -> Result<(), String> {
         .or_else(|err| Err(format!("failed to read input: {}", err)))?;
     let groups = split_groups(content.as_str())
         .iter()
-        .map(|s| Group::parse(s.as_str()))
+        .map(|strs| Group::from_strs(strs))
         .collect();
     println!(
         "Result: {}",
@@ -25,19 +25,14 @@ fn main() -> Result<(), String> {
     Ok(())
 }
 
-fn split_groups(input: &str) -> Vec<String> {
+fn split_groups<'a>(input: &'a str) -> Vec<Vec<&'a str>> {
     input.lines().fold(vec![], |mut acc, l| {
         if l == "" {
-            acc.push("".to_string());
+            acc.push(vec![]);
+        } else if acc.last_mut().is_none() {
+            acc.push(vec![l]);
         } else {
-            if acc.last_mut().is_none() {
-                acc.push(l.to_string());
-            } else {
-                acc.last_mut().map(|s| {
-                    s.push_str("\n");
-                    s.push_str(l)
-                });
-            }
+            acc.last_mut().map(|ls| ls.push(l));
         }
         acc
     })
@@ -66,17 +61,16 @@ struct Group {
 }
 
 impl Group {
-    fn parse(input: &str) -> Group {
+    fn from_strs(input: &Vec<&str>) -> Group {
         Group {
-            answers: input.chars().filter(|c| !char::is_whitespace(*c)).fold(
-                HashMap::new(),
-                |mut acc, c| {
+            answers: input.iter().fold(HashMap::new(), |mut acc, s| {
+                s.chars().for_each(|c| {
                     let counter = acc.entry(c).or_insert(0);
                     *counter += 1;
-                    acc
-                },
-            ),
-            total_members: input.lines().filter(|s| *s != "").count() as u32,
+                });
+                acc
+            }),
+            total_members: input.len() as u32,
         }
     }
 
@@ -116,7 +110,7 @@ b";
     fn test_part_one() {
         let test_groups = split_groups(TEST_STR)
             .iter()
-            .map(|s| Group::parse(s.as_str()))
+            .map(|strs| Group::from_strs(strs))
             .collect();
         assert_eq!(part1(test_groups), Some(11));
     }
@@ -125,7 +119,7 @@ b";
     fn test_part_two() {
         let test_groups = split_groups(TEST_STR)
             .iter()
-            .map(|s| Group::parse(s.as_str()))
+            .map(|strs| Group::from_strs(strs))
             .collect();
         assert_eq!(part2(test_groups), Some(6));
     }
