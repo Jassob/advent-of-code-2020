@@ -2,34 +2,17 @@ use std::char;
 use std::collections::HashMap;
 use std::fs;
 
+use utils;
 use utils::strings;
 
 fn main() -> Result<(), String> {
-    let args: Vec<String> = std::env::args().collect();
-    if args.len() != 4 {
-        Err("Usage: day4 --part <1|2> <input>")?
-    }
-    let part = &args[2];
-    let input_file = &args[3];
-    let passports = fs::read_to_string(input_file)
-        .or_else(|err| Err(format!("failed to read input: {}", err)))
-        .map(|s| {
-            strings::split_on_empty_lines(s)
-                .iter()
-                .map(strings::join_lines)
-                .collect::<Vec<String>>()
-        })
-        .and_then(|passports| Ok(passports.iter().map(|p| Passport::parse(p)).collect()))?;
-
-    println!(
-        "Result: {}",
-        if part == "1" {
-            part1(passports)
-        } else {
-            part2(passports)
-        }
-    );
-
+    let (part, content) = utils::parse_args()?;
+    let passports: Vec<Passport> = strings::split_on_empty_lines(content)
+        .iter()
+        .map(strings::join_lines)
+        .map(|p| Passport::parse(p.as_str()))
+        .collect();
+    utils::run(part1, part2, part, passports);
     Ok(())
 }
 
