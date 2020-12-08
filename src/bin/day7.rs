@@ -17,7 +17,14 @@ fn part1(r: Rules) -> u32 {
 }
 
 fn part2(r: Rules) -> u32 {
-    unimplemented!()
+    let b: Bag = "shiny gold".parse().expect("should not fail");
+    fn count_bags(rules: &Rules, b: &Bag) -> u32 {
+        1 + match rules.bags.get(b) {
+            None => 0,
+            Some(v) => v.iter().map(|(k, n)| count_bags(rules, k) * n).sum(),
+        }
+    }
+    count_bags(&r, &b) - 1
 }
 
 #[derive(Clone, Hash, PartialEq, Eq, Debug)]
@@ -169,5 +176,34 @@ dotted black bags contain no other bags.";
     fn test_part_one() {
         let rules: Rules = TEST_INPUT.parse().expect("parsing should not fail");
         assert_eq!(part1(rules), 4);
+    }
+
+    #[test]
+    fn test_part_two() {
+        let rules: Rules = "shiny gold bags contain 1 bright white bag, 2 bright yellow bags.
+bright white bags contain 1 bright yellow bag."
+            .parse()
+            .unwrap();
+        assert_eq!(part2(rules), 1 + 1 + 2 * 1);
+    }
+
+    #[test]
+    fn test_part_two_test_string() {
+        let rules: Rules = TEST_INPUT.parse().expect("parsing should not fail");
+        assert_eq!(part2(rules), 32);
+    }
+
+    #[test]
+    fn test_part_two_test_string2() {
+        let rules: Rules = "shiny gold bags contain 2 dark red bags.
+dark red bags contain 2 dark orange bags.
+dark orange bags contain 2 dark yellow bags.
+dark yellow bags contain 2 dark green bags.
+dark green bags contain 2 dark blue bags.
+dark blue bags contain 2 dark violet bags.
+dark violet bags contain no other bags."
+            .parse()
+            .expect("parsing should not fail");
+        assert_eq!(part2(rules), 126);
     }
 }
