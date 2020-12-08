@@ -12,17 +12,26 @@ fn main() -> Result<(), String> {
 }
 
 fn part1(instrs: Vec<(String, i32)>) -> i32 {
-    let mut m = Machine::new();
-    let mut executed_instrs: HashSet<usize> = HashSet::new();
-    while !executed_instrs.contains(&m.pc) {
-        executed_instrs.insert(m.pc);
-        m.step(&instrs);
+    match run_instructions(instrs) {
+        Err(acc) => acc,
+        Ok(_) => panic!("part1 is not supposed to halt, it should loop infinitily."),
     }
-    m.acc
 }
 
-fn part2(instr: Vec<(String, i32)>) -> i32 {
-    unimplemented!()
+fn part2(instrs: Vec<(String, i32)>) -> i32 {
+    let jmps_or_nops = &instrs
+        .iter()
+        .filter(|(o, _)| o == "nop" || o == "jmp")
+        .count();
+    for i in 0..*jmps_or_nops {
+        println!("mutating jmp or nop instruction {}", i);
+        let new_instrs = mutate(instrs.clone(), i as u32);
+        match run_instructions(new_instrs) {
+            Err(_) => continue,
+            Ok(acc) => return acc,
+        }
+    }
+    panic!("could not create a instruction list that terminated");
 }
 
 fn parse_line(l: &str) -> Result<(String, i32), String> {
@@ -46,17 +55,56 @@ fn parse_line(l: &str) -> Result<(String, i32), String> {
     Ok((instr, operand))
 }
 
+fn mutate(instrs: Vec<(String, i32)>, instr: u32) -> Vec<(String, i32)> {
+    let mut skipped = 0;
+    instrs
+        .iter()
+        .map(|(i, o)| {
+            let mut i = i.clone();
+            if i.as_str() == "jmp" {
+                if skipped == instr {
+                    i.clear();
+                    i.push_str("nop");
+                    println!("replaced jmp with nop");
+                }
+                skipped += 1;
+            } else if i.as_str() == "nop" {
+                if skipped == instr {
+                    i.clear();
+                    i.push_str("jmp");
+                    println!("replaced nop with jmp");
+                }
+                skipped += 1;
+            }
+
+            (i, *o)
+        })
+        .collect()
+}
+
 #[derive(Debug, Clone)]
 struct Machine {
     pc: usize,
     acc: i32,
+    has_halted: bool,
 }
 
 impl Machine {
     fn new() -> Machine {
-        Machine { pc: 0, acc: 0 }
+        Machine {
+            pc: 0,
+            acc: 0,
+            has_halted: false,
+        }
     }
     fn step(&mut self, instrs: &Vec<(String, i32)>) {
+        if self.has_halted {
+            return;
+        }
+        if self.pc == instrs.len() {
+            self.has_halted = true;
+            return;
+        }
         let (instr, o) = &instrs[self.pc];
         match instr.as_ref() {
             "acc" => {
@@ -82,6 +130,19 @@ impl Machine {
     }
 }
 
+fn run_instructions(instrs: Vec<(String, i32)>) -> Result<i32, i32> {
+    let mut m = Machine::new();
+    let mut executed_instrs: HashSet<usize> = HashSet::new();
+    while !executed_instrs.contains(&m.pc) {
+        executed_instrs.insert(m.pc);
+        m.step(&instrs);
+        if m.has_halted {
+            return Ok(m.acc);
+        }
+    }
+    Err(m.acc)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -104,5 +165,15 @@ acc +6";
             .collect::<Result<Vec<(String, i32)>, String>>()
             .expect("failed to parse test string");
         assert_eq!(part1(instrs), 5);
+    }
+
+    #[test]
+    fn test_part_two_test_input() {
+        let instrs: Vec<(String, i32)> = TEST_INPUT
+            .lines()
+            .map(parse_line)
+            .collect::<Result<Vec<(String, i32)>, String>>()
+            .expect("failed to parse test string");
+        assert_eq!(part2(instrs), 8);
     }
 }
