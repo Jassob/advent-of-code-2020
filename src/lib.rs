@@ -1,4 +1,4 @@
-use std::{clone::Clone, fmt::Display, fs, str::FromStr};
+use std::{clone::Clone, fmt::Debug, fs, str::FromStr};
 
 pub mod strings;
 
@@ -43,18 +43,18 @@ pub fn parse_args() -> Result<(Part, String), String> {
 }
 
 /// Run the part functions, depending on what part is provided.
-pub fn run<In: Clone, Out: Display>(
+pub fn run<In: Clone, Out: Debug>(
     part1: fn(In) -> Out,
     part2: fn(In) -> Out,
     part: Part,
     input: In,
 ) {
     if part == Part::One {
-        println!("Part 1: {}", part1(input));
+        println!("Part 1: {:?}", part1(input));
     } else if part == Part::Two {
-        println!("Part 2: {}", part2(input));
+        println!("Part 2: {:?}", part2(input));
     } else {
-        println!("Part 1: {}", part1(input.clone()));
-        println!("Part 2: {}", part2(input));
+        println!("Part 1: {:?}", part1(input.clone()));
+        println!("Part 2: {:?}", part2(input));
     }
 }
