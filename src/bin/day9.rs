@@ -17,7 +17,7 @@ fn parse_lines(s: &str) -> Result<Vec<i64>, String> {
 }
 
 fn part1(input: Vec<i64>) -> Result<i64, String> {
-    let (n, _) = first_violation(&input, 25).ok_or_else(|| "failed to solve part1".to_string())?;
+    let n = first_violation(&input, 25).ok_or_else(|| "failed to solve part1".to_string())?;
     Ok(n)
 }
 
@@ -25,9 +25,9 @@ fn part2(input: Vec<i64>) -> Result<i64, String> {
     encryption_weakness(&input, 25).ok_or_else(|| "failed to solve part 2".to_string())
 }
 
-fn first_violation(input: &Vec<i64>, preamble_len: usize) -> Option<(i64, usize)> {
+fn first_violation(input: &Vec<i64>, preamble_len: usize) -> Option<i64> {
     let mut window: Vec<i64> = input.iter().take(preamble_len).map(|n| *n).collect();
-    for (i, n) in input.iter().skip(preamble_len).enumerate() {
+    for n in input.iter().skip(preamble_len) {
         let last_window: Vec<&i64> = window.iter().rev().take(preamble_len).collect();
         if last_window
             .iter()
@@ -35,41 +35,28 @@ fn first_violation(input: &Vec<i64>, preamble_len: usize) -> Option<(i64, usize)
         {
             window.push(*n);
         } else {
-            return Some((*n, i));
+            return Some(*n);
         }
     }
     None
 }
 
 fn encryption_weakness(input: &Vec<i64>, preamble_len: usize) -> Option<i64> {
-    let (violation, idx) = first_violation(input, preamble_len)?;
-    let numbers: Vec<i64> = input.iter().take(idx).map(|n| *n).collect();
-    (2..idx)
-        .filter_map(|s| try_break(&numbers, violation, s))
-        .next()
-}
-
-fn try_break(input: &Vec<i64>, violation: i64, size: usize) -> Option<i64> {
-    let available_indices = (0..input.len() - size).collect();
-    let pairs: Vec<(usize, usize)> = pair(&available_indices, &available_indices)
-        .iter()
-        .map(|(n1, n2)| (*n1, *n2))
-        .filter(|(n1, n2)| n1 + n2 < available_indices.len())
-        .collect();
-    for (i, j) in pairs {
-        let numbers: Vec<i64> = input.iter().skip(i).take(j).map(|n| *n).collect();
-        if numbers.iter().sum::<i64>() == violation {
-            return Some(numbers.iter().min()? + numbers.iter().max()?);
+    let violation = first_violation(input, preamble_len)?;
+    let mut start = 0;
+    let mut sum = 0;
+    for (i, n) in input.iter().enumerate() {
+        sum += n;
+        while sum > violation {
+            sum -= input[start];
+            start += 1;
+        }
+        if sum == violation {
+            let range: Vec<i64> = input[start..i].iter().map(|n| *n).collect();
+            return Some(*range.iter().min().unwrap() + *range.iter().max().unwrap());
         }
     }
     None
-}
-
-fn pair(a: &Vec<usize>, b: &Vec<usize>) -> Vec<(usize, usize)> {
-    a.iter().fold(vec![], |mut acc, n1| {
-        b.iter().for_each(|n2| acc.push((*n1, *n2)));
-        acc
-    })
 }
 
 #[cfg(test)]
@@ -100,7 +87,7 @@ mod tests {
     #[test]
     fn test_part_one() {
         let nums = parse_lines(TEST_INPUT).unwrap();
-        assert_eq!(first_violation(&nums, 5), Some((127, 9)));
+        assert_eq!(first_violation(&nums, 5), Some(127));
     }
 
     #[test]
