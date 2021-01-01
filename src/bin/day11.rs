@@ -10,7 +10,7 @@ fn main() -> Result<(), String> {
 
 fn part1(mut input: Room) -> Result<i64, String> {
     loop {
-        input.step();
+        input.step(utils::Part::One);
         if input.stable {
             break;
         }
@@ -22,8 +22,18 @@ fn part1(mut input: Room) -> Result<i64, String> {
         .count() as i64)
 }
 
-fn part2(input: Room) -> Result<i64, String> {
-    unimplemented!()
+fn part2(mut input: Room) -> Result<i64, String> {
+    loop {
+        input.step(utils::Part::Two);
+        if input.stable {
+            break;
+        }
+    }
+    Ok(input
+        .positions
+        .values()
+        .filter(|v| v.map_or_else(|| false, |s| s == Seat::Occupied))
+        .count() as i64)
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -34,16 +44,16 @@ enum Seat {
 
 #[derive(Clone, Debug, PartialEq)]
 struct Room {
-    positions: HashMap<(usize, usize), Option<Seat>>,
+    positions: HashMap<(i32, i32), Option<Seat>>,
     max_row: usize,
     max_column: usize,
     stable: bool,
 }
 
 impl Room {
-    fn step(&mut self) {
+    fn step(&mut self, part: utils::Part) {
         let mut changes = 0;
-        let seats_to_check: Vec<(usize, usize)> = self
+        let seats_to_check: Vec<(i32, i32)> = self
             .positions
             .iter()
             .filter(|(_, v)| v.is_some())
@@ -51,7 +61,11 @@ impl Room {
             .collect();
         let mut new_positions = self.positions.clone();
         for seat in seats_to_check {
-            let new_value = self.check_seat(seat);
+            let new_value = match part {
+                utils::Part::One => self.check_seat(seat),
+                utils::Part::Two => self.check_seat_part2(seat),
+                _ => unimplemented!(),
+            };
             if self.positions[&seat] != new_value {
                 new_positions.insert(seat, new_value);
                 changes += 1;
@@ -61,8 +75,8 @@ impl Room {
         self.stable = changes == 0;
     }
 
-    fn check_seat(&self, s: (usize, usize)) -> Option<Seat> {
-        let neighbors = self.get_neighbors(s);
+    fn check_seat(&self, s: (i32, i32)) -> Option<Seat> {
+        let neighbors = self.get_adjacent_cells(s);
         match self.positions[&s] {
             None => None,
             Some(Seat::Occupied) => {
@@ -87,22 +101,95 @@ impl Room {
         }
     }
 
-    fn get_neighbors(&self, (row, col): (usize, usize)) -> Vec<Option<Seat>> {
+    fn check_seat_part2(&self, s: (i32, i32)) -> Option<Seat> {
+        let neighbors = self.get_neighbors(s);
+        match self.positions[&s] {
+            None => None,
+            Some(Seat::Occupied) => {
+                if neighbors
+                    .iter()
+                    .cloned()
+                    .filter(|n| *n == Seat::Occupied)
+                    .count()
+                    >= 5
+                {
+                    Some(Seat::Empty)
+                } else {
+                    Some(Seat::Occupied)
+                }
+            }
+            Some(Seat::Empty) => {
+                if neighbors.iter().all(|n| *n != Seat::Occupied) {
+                    Some(Seat::Occupied)
+                } else {
+                    Some(Seat::Empty)
+                }
+            }
+        }
+    }
+
+    fn get_adjacent_cells(&self, (row, col): (i32, i32)) -> Vec<Option<Seat>> {
         let mut neighbors = vec![];
-        let mut neighbors_idx = vec![];
-        let (row, col) = (row as i64, col as i64);
         for r in (-1..2).map(|i| row + i) {
             for c in (-1..2).map(|i| col + i) {
                 if (r, c) == (row, col) {
                     continue;
                 }
-                neighbors_idx.push((r, c));
-                if let Some(p) = self.positions.get(&(r as usize, c as usize)) {
+                if let Some(p) = self.positions.get(&(r, c)) {
                     neighbors.push(*p);
                 }
             }
         }
         neighbors
+    }
+
+    fn get_neighbors(&self, (row, col): (i32, i32)) -> Vec<Seat> {
+        enum Direction {
+            N,
+            NE,
+            E,
+            SE,
+            S,
+            SW,
+            W,
+            NW,
+        }
+
+        fn get_neighbor_in_direction(
+            (row, col): (i32, i32),
+            direction: Direction,
+            room: &Room,
+        ) -> Option<Seat> {
+            let pos = match direction {
+                Direction::N => (row - 1, col),
+                Direction::NE => (row - 1, col + 1),
+                Direction::E => (row, col + 1),
+                Direction::SE => (row + 1, col + 1),
+                Direction::S => (row + 1, col),
+                Direction::SW => (row + 1, col - 1),
+                Direction::W => (row, col - 1),
+                Direction::NW => (row - 1, col - 1),
+            };
+            match room.positions.get(&pos) {
+                None => None,
+                Some(None) => get_neighbor_in_direction(pos, direction, room),
+                Some(Some(s)) => Some(*s),
+            }
+        }
+
+        vec![
+            Direction::N,
+            Direction::NE,
+            Direction::E,
+            Direction::SE,
+            Direction::S,
+            Direction::SW,
+            Direction::W,
+            Direction::NW,
+        ]
+        .into_iter()
+        .filter_map(|d| get_neighbor_in_direction((row, col), d, self))
+        .collect::<Vec<Seat>>()
     }
 }
 
@@ -117,10 +204,10 @@ impl FromStr for Room {
             max_row = row;
             l.chars().enumerate().for_each(|(col, c)| {
                 match c {
-                    '#' => room.insert((row, col), Some(Seat::Occupied)),
-                    'L' => room.insert((row, col), Some(Seat::Empty)),
-                    '.' => room.insert((row, col), None),
-                    _ => room.insert((row, col), None),
+                    '#' => room.insert((row as i32, col as i32), Some(Seat::Occupied)),
+                    'L' => room.insert((row as i32, col as i32), Some(Seat::Empty)),
+                    '.' => room.insert((row as i32, col as i32), None),
+                    _ => room.insert((row as i32, col as i32), None),
                 };
                 max_column = col;
             })
@@ -138,7 +225,7 @@ impl fmt::Display for Room {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), std::fmt::Error> {
         for row in 0..self.max_row + 1 {
             for column in 0..self.max_column + 1 {
-                match self.positions.get(&(row, column)).unwrap() {
+                match self.positions.get(&(row as i32, column as i32)).unwrap() {
                     Some(Seat::Empty) => write!(f, "{}", 'L')?,
                     Some(Seat::Occupied) => write!(f, "{}", '#')?,
                     None => write!(f, "{}", '.')?,
@@ -191,7 +278,7 @@ L.L.L..L..
 #.#LLLL.##"
             .parse()
             .unwrap();
-        r.step();
+        r.step(utils::Part::One);
         assert_eq!(r, expected);
     }
 
@@ -199,5 +286,41 @@ L.L.L..L..
     fn test_part_one() {
         let r = TEST_STR.parse().unwrap();
         assert_eq!(part1(r), Ok(37))
+    }
+
+    #[test]
+    fn test_step_part_two() {
+        let mut r: Room = "#.##.##.##
+#######.##
+#.#.#..#..
+####.##.##
+#.##.##.##
+#.#####.##
+..#.#.....
+##########
+#.######.#
+#.#####.##"
+            .parse()
+            .unwrap();
+        let expected: Room = "#.LL.LL.L#
+#LLLLLL.LL
+L.L.L..L..
+LLLL.LL.LL
+L.LL.LL.LL
+L.LLLLL.LL
+..L.L.....
+LLLLLLLLL#
+#.LLLLLL.L
+#.LLLLL.L#"
+            .parse()
+            .unwrap();
+        r.step(utils::Part::Two);
+        assert_eq!(r, expected);
+    }
+
+    #[test]
+    fn test_part_two() {
+        let r = TEST_STR.parse().unwrap();
+        assert_eq!(part2(r), Ok(26))
     }
 }
