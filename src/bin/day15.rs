@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 fn main() -> Result<(), String> {
     let (part, content) = utils::parse_args()?;
@@ -21,9 +21,10 @@ fn play(start_numbers: Vec<u32>, to: usize) -> u32 {
     let mut turns: HashMap<u32, Vec<u32>> = HashMap::new();
     let mut times: HashMap<u32, u32> = HashMap::new();
     let mut last_number = 0;
+    let start_numbers_len = start_numbers.len();
     for turn in 1..to + 1 {
         let number: u32;
-        if turn - 1 < start_numbers.len() {
+        if turn - 1 < start_numbers_len {
             number = start_numbers[turn - 1];
         } else if let Some(0) = times.get(&last_number) {
             number = 0;
@@ -33,13 +34,15 @@ fn play(start_numbers: Vec<u32>, to: usize) -> u32 {
         } else {
             panic!("");
         }
-        println!("turn: {}, number: {}", turn, number);
         turns
             .entry(number)
             .and_modify(|ts| ts.push(turn as u32))
             .or_insert(vec![turn as u32]);
         times.entry(number).and_modify(|t| *t += 1).or_insert(0);
         last_number = number;
+        if turn % 100 == 0 {
+            println!("turn: {}", turn);
+        }
     }
     last_number
 }
